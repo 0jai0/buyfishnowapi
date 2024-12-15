@@ -21,7 +21,7 @@ dotenv.config();
 //create a separate file for this and then import/use that file here
 
 mongoose
-  .connect(process.env.MONGO_DB_URI)
+  .connect("mongodb+srv://mjvkiran:Kiranmjv1027%40@cluster0.lit8r.mongodb.net/")
   .then(() => console.log("MongoDB connected"))
   .catch((error) => console.log(error));
 
