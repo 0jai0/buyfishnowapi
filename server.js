@@ -45,6 +45,9 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json());
+app.get('/api/get',(req,res) => {
+  res.send({message:"hello back to nodejs"})
+})
 app.use("/api/auth", authRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/admin/orders", adminOrderRouter);
