@@ -9,7 +9,7 @@ const MERCHANT_ID = "PGTESTPAYUAT86";
 
 const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
 const MERCHANT_STATUS_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status";
-const REDIRECT_URL = "http://35.154.34.69/api/shop/order/status";
+const REDIRECT_URL = "https://buyfishnowapi-264166008170.us-central1.run.app/api/shop/order/status";
 const SUCCESS_URL = "http://localhost:5173/payment-success";
 const FAILURE_URL = "http://localhost:5173/payment-failure";
 
