@@ -3,14 +3,13 @@ const crypto = require("crypto");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
-const config = require('./config.json');
 
-const MERCHANT_KEY = config.MERCHANT_KEY;
-const MERCHANT_ID = config.MERCHANT_ID;
+const MERCHANT_KEY = "96434309-7796-489d-8924-ab56988a6076";
+const MERCHANT_ID = "PGTESTPAYUAT86";
 
 const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
 const MERCHANT_STATUS_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status";
-const REDIRECT_URL = "http://localhost:5000/api/shop/order/status";
+const REDIRECT_URL = "https://buyfishnowapi-264166008170.us-central1.run.app/api/shop/order/status";
 const SUCCESS_URL = "http://localhost:5173/payment-success";
 const FAILURE_URL = "http://localhost:5173/payment-failure";
 
