@@ -34,7 +34,7 @@ const addToCart = async (req, res) => {
     if (findCurrentProductIndex === -1) {
       cart.items.push({ productId, quantity });
     } else {
-      cart.items[findCurrentProductIndex].quantity += quantity;
+      cart.items[findCurrentProductIndex].quantity = quantity;
     }
 
     await cart.save();

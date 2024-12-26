@@ -15,7 +15,7 @@ const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
 
 const commonFeatureRouter = require("./routes/common/feature-routes");
-
+const otpRouter = require("./routes/auth/otp-routes");
 dotenv.config();
 //create a database connection -> u can also
 //create a separate file for this and then import/use that file here
@@ -49,6 +49,7 @@ app.get('/api/get',(req,res) => {
   res.send({message:"hello back to nodejs"})
 })
 app.use("/api/auth", authRouter);
+app.use("/api", otpRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/admin/orders", adminOrderRouter);
 

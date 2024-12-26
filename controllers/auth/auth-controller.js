@@ -38,15 +38,15 @@ const registerUser = async (req, res) => {
 //login
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
-
   try {
     const checkUser = await User.findOne({ email });
     if (!checkUser)
+      
       return res.json({
+    
         success: false,
         message: "User doesn't exists! Please register first",
       });
-
     const checkPasswordMatch = await bcrypt.compare(
       password,
       checkUser.password
@@ -56,7 +56,6 @@ const loginUser = async (req, res) => {
         success: false,
         message: "Incorrect password! Please try again",
       });
-
     const token = jwt.sign(
       {
         id: checkUser._id,
@@ -67,9 +66,9 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "60m" }
     );
-
     res.cookie("token", token, { httpOnly: true, secure: false }).json({
       success: true,
+      token: token,
       message: "Logged in successfully",
       user: {
         email: checkUser.email,
@@ -83,6 +82,40 @@ const loginUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Some error occured",
+    });
+  }
+};
+
+
+const forgotPassword = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    // Check if the email exists in the database
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No user found with this email address!",
+      });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update the password in the database
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password has been updated successfully!",
+    });
+  } catch (error) {
+    console.error("Forgot Password Error: ", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong. Please try again later.",
     });
   }
 };
@@ -117,4 +150,4 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = { registerUser, loginUser, logoutUser, authMiddleware };
+module.exports = { registerUser, loginUser, logoutUser, authMiddleware,forgotPassword };
