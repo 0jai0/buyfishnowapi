@@ -53,10 +53,8 @@ const createOrder = async (req, res) => {
       merchantUserId: userId,
       amount: totalAmount * 100, // Amount in paise
       merchantTransactionId: orderId, // Use the orderId as the transactionId
-      redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
-      redirectMode: "POST",
       paymentInstrument: {
-        type: "PAY_PAGE",
+        type: "SDK", // Use SDK instead of redirect URL
       },
     };
 
@@ -79,11 +77,9 @@ const createOrder = async (req, res) => {
 
     const response = await axios.request(options);
 
-    const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
-
     res.status(201).json({
       success: true,
-      approvalURL: redirectUrl,
+      paymentData: response.data.data,
       orderId: orderId,
     });
   } catch (error) {
@@ -96,7 +92,7 @@ const createOrder = async (req, res) => {
 };
 
 const capturePayment = async (req, res) => {
-  const { id: orderId } = req.query; 
+  const { id: orderId,paymentStatus } = req.query; 
   console.log(orderId, "dtykt");
   try {
     const order = await Order.findById(orderId);
@@ -108,26 +104,7 @@ const capturePayment = async (req, res) => {
       });
     }
 
-    const merchantTransactionId = order.paymentId;
-    const keyIndex = 1;
-    const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
-    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
-    const checksum = sha256 + "###" + keyIndex;
-
-    const options = {
-      method: "GET",
-      url: `${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-        "X-MERCHANT-ID": MERCHANT_ID,
-      },
-    };
-
-    const response = await axios.request(options);
-
-    if (response.data.success === true) {
+    if (paymentStatus === "SUCCESS") {
       order.paymentStatus = "paid";
       order.orderStatus = "confirmed";
 
@@ -141,18 +118,25 @@ const capturePayment = async (req, res) => {
           });
         }
 
-        product.totalStock = product.totalStock;
+        product.totalStock -= item.quantity;
         await product.save();
       }
 
       await Cart.findByIdAndDelete(order.cartId);
       await order.save();
 
-      // Redirect to success page
-      res.redirect(`${SUCCESS_URL}/?id=${orderId}`);
+      return res.status(200).json({
+        success: true,
+        message: "Payment confirmed, order placed successfully!",
+      });
     } else {
-      // Redirect to failure page
-      res.redirect(`${FAILURE_URL}/?id=${orderId}`);
+      order.paymentStatus = "failed";
+      await order.save();
+
+      return res.status(400).json({
+        success: false,
+        message: "Payment failed",
+      });
     }
   } catch (error) {
     console.error(error);
