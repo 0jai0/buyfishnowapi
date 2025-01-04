@@ -53,7 +53,7 @@ const createOrder = async (req, res) => {
       merchantUserId: userId,
       amount: totalAmount * 100, // Amount in paise
       merchantTransactionId: orderId, // Use the orderId as the transactionId
-      redirectUrl: ${REDIRECT_URL}/?id=${orderId},
+      redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
       redirectMode: "POST",
       paymentInstrument: {
         type: "PAY_PAGE",
@@ -110,13 +110,13 @@ const capturePayment = async (req, res) => {
 
     const merchantTransactionId = order.paymentId;
     const keyIndex = 1;
-    const string = /pg/v1/status/${MERCHANT_ID}/${merchantTransactionId} + MERCHANT_KEY;
+    const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
     const sha256 = crypto.createHash("sha256").update(string).digest("hex");
     const checksum = sha256 + "###" + keyIndex;
 
     const options = {
       method: "GET",
-      url: ${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId},
+      url: `${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
@@ -137,7 +137,7 @@ const capturePayment = async (req, res) => {
         if (!product || product.totalStock < item.quantity) {
           return res.status(404).json({
             success: false,
-            message: Not enough stock for product ${item.title},
+            message: `Not enough stock for product ${item.title}`,
           });
         }
 
@@ -149,10 +149,10 @@ const capturePayment = async (req, res) => {
       await order.save();
 
       // Redirect to success page
-      res.redirect(${SUCCESS_URL}/?id=${orderId});
+      res.redirect(`${SUCCESS_URL}/?id=${orderId}`);
     } else {
       // Redirect to failure page
-      res.redirect(${FAILURE_URL}/?id=${orderId});
+      res.redirect(`${FAILURE_URL}/?id=${orderId}`);
     }
   } catch (error) {
     console.error(error);
