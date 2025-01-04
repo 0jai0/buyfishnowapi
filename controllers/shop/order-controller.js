@@ -7,8 +7,8 @@ const Product = require("../../models/Product");
 const MERCHANT_KEY = "96434309-7796-489d-8924-ab56988a6076";
 const MERCHANT_ID = "PGTESTPAYUAT86";
 
-const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/mobile/pay";
-const MERCHANT_STATUS_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/mobile/status";
+const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
+const MERCHANT_STATUS_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status";
 const REDIRECT_URL = "https://buyfishnowapi-264166008170.us-central1.run.app/api/shop/order/status";
 const SUCCESS_URL = "http://localhost:5173/payment-success";
 const FAILURE_URL = "http://localhost:5173/payment-failure";
@@ -53,8 +53,10 @@ const createOrder = async (req, res) => {
       merchantUserId: userId,
       amount: totalAmount * 100, // Amount in paise
       merchantTransactionId: orderId, // Use the orderId as the transactionId
+      redirectUrl: ${REDIRECT_URL}/?id=${orderId},
+      redirectMode: "POST",
       paymentInstrument: {
-        type: "SDK", // Use SDK instead of redirect URL
+        type: "PAY_PAGE",
       },
     };
 
@@ -77,9 +79,11 @@ const createOrder = async (req, res) => {
 
     const response = await axios.request(options);
 
+    const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
+
     res.status(201).json({
       success: true,
-      paymentData: response.data.data,
+      approvalURL: redirectUrl,
       orderId: orderId,
     });
   } catch (error) {
@@ -92,7 +96,7 @@ const createOrder = async (req, res) => {
 };
 
 const capturePayment = async (req, res) => {
-  const { id: orderId,paymentStatus } = req.query; 
+  const { id: orderId } = req.query; 
   console.log(orderId, "dtykt");
   try {
     const order = await Order.findById(orderId);
@@ -104,7 +108,26 @@ const capturePayment = async (req, res) => {
       });
     }
 
-    if (paymentStatus === "SUCCESS") {
+    const merchantTransactionId = order.paymentId;
+    const keyIndex = 1;
+    const string = /pg/v1/status/${MERCHANT_ID}/${merchantTransactionId} + MERCHANT_KEY;
+    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
+    const checksum = sha256 + "###" + keyIndex;
+
+    const options = {
+      method: "GET",
+      url: ${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId},
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+        "X-VERIFY": checksum,
+        "X-MERCHANT-ID": MERCHANT_ID,
+      },
+    };
+
+    const response = await axios.request(options);
+
+    if (response.data.success === true) {
       order.paymentStatus = "paid";
       order.orderStatus = "confirmed";
 
@@ -114,29 +137,22 @@ const capturePayment = async (req, res) => {
         if (!product || product.totalStock < item.quantity) {
           return res.status(404).json({
             success: false,
-            message: `Not enough stock for product ${item.title}`,
+            message: Not enough stock for product ${item.title},
           });
         }
 
-        product.totalStock -= item.quantity;
+        product.totalStock = product.totalStock;
         await product.save();
       }
 
       await Cart.findByIdAndDelete(order.cartId);
       await order.save();
 
-      return res.status(200).json({
-        success: true,
-        message: "Payment confirmed, order placed successfully!",
-      });
+      // Redirect to success page
+      res.redirect(${SUCCESS_URL}/?id=${orderId});
     } else {
-      order.paymentStatus = "failed";
-      await order.save();
-
-      return res.status(400).json({
-        success: false,
-        message: "Payment failed",
-      });
+      // Redirect to failure page
+      res.redirect(${FAILURE_URL}/?id=${orderId});
     }
   } catch (error) {
     console.error(error);
