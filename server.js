@@ -6,7 +6,8 @@ const cors = require("cors");
 const authRouter = require("./routes/auth/auth-routes");
 const adminProductsRouter = require("./routes/admin/products-routes");
 const adminOrderRouter = require("./routes/admin/order-routes");
-
+const userRoutes = require('./routes/admin/user-routes');
+const adminAssignedRouter = require("./routes/admin/assigned-routes");
 const shopProductsRouter = require("./routes/shop/products-routes");
 const shopCartRouter = require("./routes/shop/cart-routes");
 const shopAddressRouter = require("./routes/shop/address-routes");
@@ -52,7 +53,8 @@ app.use("/api/auth", authRouter);
 app.use("/api", otpRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/admin/orders", adminOrderRouter);
-
+app.use('/api/admin/users', userRoutes);
+app.use("/api/admin/delivery", adminAssignedRouter);
 app.use("/api/shop/products", shopProductsRouter);
 app.use("/api/shop/cart", shopCartRouter);
 app.use("/api/shop/address", shopAddressRouter);

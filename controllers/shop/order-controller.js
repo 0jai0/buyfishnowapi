@@ -3,16 +3,20 @@ const crypto = require("crypto");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
+const { Buffer } = require("buffer");
 
+// Constants
 const MERCHANT_KEY = "96434309-7796-489d-8924-ab56988a6076";
 const MERCHANT_ID = "PGTESTPAYUAT86";
-
 const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
 const MERCHANT_STATUS_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status";
 const REDIRECT_URL = "https://buyfishnowapi-264166008170.us-central1.run.app/api/shop/order/status";
 const SUCCESS_URL = "http://localhost:5173/payment-success";
 const FAILURE_URL = "http://localhost:5173/payment-failure";
 
+/**
+ * Create a new order and initiate payment through PhonePe
+ */
 const createOrder = async (req, res) => {
   try {
     const {
@@ -27,7 +31,7 @@ const createOrder = async (req, res) => {
       cartId,
     } = req.body;
 
-    // Use the database-generated _id as the paymentId
+    // Step 1: Save the order in the database
     const newOrder = new Order({
       userId,
       cartId,
@@ -43,16 +47,17 @@ const createOrder = async (req, res) => {
 
     await newOrder.save();
 
-    // Extract the automatically generated _id to use as paymentId
+    // Use the database-generated _id as the paymentId
     const orderId = newOrder._id.toString();
-    newOrder.paymentId = orderId; // Assign _id to paymentId
-    await newOrder.save(); // Save the updated order with the paymentId
+    newOrder.paymentId = orderId;
+    await newOrder.save();
 
-    const paymentPayload = {
+    // Step 2: Prepare the payment payload for PhonePe
+    const transactionBody = {
       merchantId: MERCHANT_ID,
       merchantUserId: userId,
-      amount: totalAmount * 100, // Amount in paise
-      merchantTransactionId: orderId, // Use the orderId as the transactionId
+      amount: totalAmount * 100, // Convert to paise
+      merchantTransactionId: orderId, // Unique transaction ID
       redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
       redirectMode: "POST",
       paymentInstrument: {
@@ -60,44 +65,55 @@ const createOrder = async (req, res) => {
       },
     };
 
-    const payload = Buffer.from(JSON.stringify(paymentPayload)).toString("base64");
+    const payloadBase64 = Buffer.from(JSON.stringify(transactionBody)).toString("base64");
     const keyIndex = 1;
-    const string = payload + "/pg/v1/pay" + MERCHANT_KEY;
-    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
-    const checksum = sha256 + "###" + keyIndex;
+    const checksumString = payloadBase64 + "/pg/v1/pay" + MERCHANT_KEY;
+    const checksumHash = crypto.createHash("sha256").update(checksumString).digest("hex");
+    const checksum = `${checksumHash}###${keyIndex}`;
 
+    // Step 3: Make a request to PhonePe's API
     const options = {
       method: "POST",
       url: MERCHANT_BASE_URL,
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
-        "X-VERIFY": checksum,
+        "X-VERIFY": checksum, // Add checksum in headers
       },
-      data: { request: payload },
+      data: { request: payloadBase64 },
     };
 
     const response = await axios.request(options);
 
-    const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
+    if (response.data.success) {
+      const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
 
-    res.status(201).json({
-      success: true,
-      approvalURL: redirectUrl,
-      orderId: orderId,
-    });
+      res.status(201).json({
+        success: true,
+        approvalURL: redirectUrl, // URL to redirect for payment
+        transactionBody, // Include transactionBody in response
+        checksum, // Include checksum in response
+        orderId, // Include orderId for reference
+      });
+    } else {
+      throw new Error(response.data.message || "Failed to initiate payment");
+    }
   } catch (error) {
-    console.error(error);
+    console.error("Error in createOrder:", error);
     res.status(500).json({
       success: false,
-      message: "Error while creating order",
+      message: error.message || "Error while creating order",
     });
   }
 };
 
+
+/**
+ * Capture and verify payment status after redirection from PhonePe
+ */
 const capturePayment = async (req, res) => {
-  const { id: orderId } = req.query; 
-  console.log(orderId, "dtykt");
+  const { id: orderId } = req.query;
+
   try {
     const order = await Order.findById(orderId);
 
@@ -108,26 +124,30 @@ const capturePayment = async (req, res) => {
       });
     }
 
+    // Step 1: Prepare checksum for status check
     const merchantTransactionId = order.paymentId;
     const keyIndex = 1;
-    const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
-    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
-    const checksum = sha256 + "###" + keyIndex;
+    const checksumString =
+      `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
+    const checksumHash = crypto.createHash("sha256").update(checksumString).digest("hex");
+    const checksum = `${checksumHash}###${keyIndex}`;
 
+    // Step 2: Make a request to check payment status
     const options = {
       method: "GET",
       url: `${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-        "X-MERCHANT-ID": MERCHANT_ID,
+        "X-VERIFY": checksum, // Add checksum in headers
+        "X-MERCHANT-ID": MERCHANT_ID, // Merchant ID header
       },
     };
 
     const response = await axios.request(options);
 
-    if (response.data.success === true) {
+    if (response.data.success) {
+      // Update the order status and stock on successful payment
       order.paymentStatus = "paid";
       order.orderStatus = "confirmed";
 
@@ -141,30 +161,29 @@ const capturePayment = async (req, res) => {
           });
         }
 
-        product.totalStock = product.totalStock;
+        product.totalStock -= item.quantity; // Deduct stock
         await product.save();
       }
 
-      await Cart.findByIdAndDelete(order.cartId);
+      await Cart.findByIdAndDelete(order.cartId); // Clear the cart after successful purchase
       await order.save();
 
-      // Redirect to success page
-      res.redirect(`${SUCCESS_URL}/?id=${orderId}`);
+      res.redirect(`${SUCCESS_URL}/?id=${orderId}`); // Redirect to success page
     } else {
-      // Redirect to failure page
-      res.redirect(`${FAILURE_URL}/?id=${orderId}`);
+      res.redirect(`${FAILURE_URL}/?id=${orderId}`); // Redirect to failure page
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error in capturePayment:", error);
     res.status(500).json({
       success: false,
-      message: "Error while capturing payment",
+      message: error.message || "Error while capturing payment",
     });
   }
 };
 
-
-
+/**
+ * Get all orders by a specific user
+ */
 const getAllOrdersByUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -182,15 +201,18 @@ const getAllOrdersByUser = async (req, res) => {
       success: true,
       data: orders,
     });
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Error while fetching orders",
     });
   }
 };
 
+/**
+ * Get details of a specific order by ID
+ */
 const getOrderDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -208,11 +230,11 @@ const getOrderDetails = async (req, res) => {
       success: true,
       data: order,
     });
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: error.message || "Error while fetching order details",
     });
   }
 };
