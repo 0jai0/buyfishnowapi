@@ -23,7 +23,7 @@ const assignOrder = async (req, res) => {
     }
 
     orders.forEach((order) => {
-      assignedOrder.orders.push({ orderId: order.orderId, routes: order.routes });
+      assignedOrder.orders.push({ orderId: order.orderId });
     });
     await assignedOrder.save();
 
