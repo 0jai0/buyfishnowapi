@@ -22,12 +22,19 @@ const assignOrder = async (req, res) => {
       assignedOrder = new AssignedOrder({ userId: deliveryUserId, orders: [] });
     }
 
+    // Assuming the 'routes' field contains an array of route objects
     routes.forEach((route) => {
-      // Assume route contains polyline data, startLocation, and endLocation
-      assignedOrder.orders.push({
-        orderId: route.orderId,
-        routes: route.routes, // Store the routes with the order
-      });
+      // Validate or transform the route if needed
+      if (route && Array.isArray(route)) {
+        route.forEach((routeDetail) => {
+          if (routeDetail && routeDetail.polyline) {
+            assignedOrder.orders.push({
+              orderId: routeDetail.orderId,
+              routes: routeDetail.routes, // Store the route in the database
+            });
+          }
+        });
+      }
     });
 
     await assignedOrder.save();
