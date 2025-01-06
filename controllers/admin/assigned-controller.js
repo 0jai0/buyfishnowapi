@@ -22,7 +22,9 @@ const assignOrder = async (req, res) => {
       assignedOrder = new AssignedOrder({ userId, orders: [] });
     }
 
-    assignedOrder.orders.push({ orderId });
+    orders.forEach((order) => {
+      assignedOrder.orders.push({ orderId: order.orderId, routes: order.routes });
+    });
     await assignedOrder.save();
 
     res.status(201).json({ message: 'Order assigned successfully', data: assignedOrder });
