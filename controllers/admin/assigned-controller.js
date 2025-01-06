@@ -10,40 +10,40 @@ const router = express.Router();
 // Admin: Assign a new order to a delivery boy
 const assignOrder = async (req, res) => {
   try {
-    const { deliveryUserId, routes } = req.body;
+    const { deliveryUserId, orders } = req.body;
 
-    if (!deliveryUserId || !routes || routes.length === 0) {
-      return res.status(400).json({ message: 'deliveryUserId and routes are required' });
+    if (!deliveryUserId || !orders || !Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ message: 'deliveryUserId and valid orders are required' });
     }
 
+    // Find if an assigned order record already exists for the user
     let assignedOrder = await AssignedOrder.findOne({ userId: deliveryUserId });
 
+    // If not, create a new assigned order record
     if (!assignedOrder) {
       assignedOrder = new AssignedOrder({ userId: deliveryUserId, orders: [] });
     }
 
-    // Assuming the 'routes' field contains an array of route objects
-    routes.forEach((route) => {
-      // Validate or transform the route if needed
-      if (route && Array.isArray(route)) {
-        route.forEach((routeDetail) => {
-          if (routeDetail && routeDetail.polyline) {
-            assignedOrder.orders.push({
-              orderId: routeDetail.orderId,
-              routes: routeDetail.routes, // Store the route in the database
-            });
-          }
+    // Iterate through the orders array and add them
+    orders.forEach((order) => {
+      if (order.orderId) {
+        assignedOrder.orders.push({
+          orderId: order.orderId,
+          status: order.status || 'Assigned',
+          assignedAt: new Date()
         });
       }
     });
 
+    // Save the updated or newly created assigned order
     await assignedOrder.save();
 
-    res.status(201).json({ message: 'Order assigned successfully', data: assignedOrder });
+    res.status(201).json({ message: 'Orders assigned successfully', data: assignedOrder });
   } catch (error) {
-    res.status(500).json({ message: 'Error assigning order', error: error.message });
+    res.status(500).json({ message: 'Error assigning orders', error: error.message });
   }
 };
+
 
 
 // Delivery Boy: Update the status of an order

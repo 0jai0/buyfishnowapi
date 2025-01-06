@@ -9,14 +9,6 @@ const assignedOrderSchema = new mongoose.Schema({
         ref: 'Order', // Reference to the Order collection
         required: true
       },
-      routes: [
-        {
-          // Each route could have data like polyline or other details depending on the structure of your fetched routes
-          startLocation: { type: mongoose.Schema.Types.Mixed },
-          endLocation: { type: mongoose.Schema.Types.Mixed },
-          polyline: String,  // Assuming polyline data is stored as a string
-        }
-      ],
       status: {
         type: String,
         enum: ['Assigned', 'Picked Up', 'In Transit', 'Delivered', 'Cancelled'],
