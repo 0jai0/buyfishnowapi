@@ -10,21 +10,26 @@ const router = express.Router();
 // Admin: Assign a new order to a delivery boy
 const assignOrder = async (req, res) => {
   try {
-    const { userId, orderId } = req.body;
+    const { deliveryUserId, routes } = req.body;
 
-    if (!userId || !orderId) {
-      return res.status(400).json({ message: 'userId and orderId are required' });
+    if (!deliveryUserId || !routes || routes.length === 0) {
+      return res.status(400).json({ message: 'deliveryUserId and routes are required' });
     }
 
-    let assignedOrder = await AssignedOrder.findOne({ userId });
+    let assignedOrder = await AssignedOrder.findOne({ userId: deliveryUserId });
 
     if (!assignedOrder) {
-      assignedOrder = new AssignedOrder({ userId, orders: [] });
+      assignedOrder = new AssignedOrder({ userId: deliveryUserId, orders: [] });
     }
 
-    orders.forEach((order) => {
-      assignedOrder.orders.push({ orderId: order.orderId });
+    routes.forEach((route) => {
+      // Assume route contains polyline data, startLocation, and endLocation
+      assignedOrder.orders.push({
+        orderId: route.orderId,
+        routes: route.routes, // Store the routes with the order
+      });
     });
+
     await assignedOrder.save();
 
     res.status(201).json({ message: 'Order assigned successfully', data: assignedOrder });
@@ -32,6 +37,7 @@ const assignOrder = async (req, res) => {
     res.status(500).json({ message: 'Error assigning order', error: error.message });
   }
 };
+
 
 // Delivery Boy: Update the status of an order
 const updateOrderStatus = async (req, res) => {
