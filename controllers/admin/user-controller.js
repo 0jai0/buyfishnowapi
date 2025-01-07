@@ -7,4 +7,23 @@ const getAllUsers = asyncHandler(async (req, res) => {
   res.status(200).json(users); // Return the list of users
 });
 
-module.exports = { getAllUsers };
+const getUserById = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Fetch user details from database using userId
+    const user = await User.findById(userId);
+
+    // If user not found, send 404 response
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Send user details as response
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+module.exports = { getAllUsers,getUserById };
