@@ -47,22 +47,18 @@ const createOrder = async (req, res) => {
 
     await newOrder.save();
 
-    // Use the database-generated _id as the paymentId
     const orderId = newOrder._id.toString();
     newOrder.paymentId = orderId;
     await newOrder.save();
 
-    // Step 2: Prepare the payment payload for PhonePe
+    // Step 2: Prepare transaction body for PhonePe
     const transactionBody = {
       merchantId: MERCHANT_ID,
       merchantUserId: userId,
-      amount: totalAmount * 100, // Convert to paise
-      merchantTransactionId: orderId, // Unique transaction ID
-      redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
-      redirectMode: "POST",
-      paymentInstrument: {
-        type: "PAY_PAGE",
-      },
+      amount: totalAmount * 100, // Amount in paise
+      merchantTransactionId: orderId,
+      redirectMode: "SDK", // Use SDK mode
+      paymentInstrument: { type: "PAY_PAGE" },
     };
 
     const payloadBase64 = Buffer.from(JSON.stringify(transactionBody)).toString("base64");
@@ -71,33 +67,14 @@ const createOrder = async (req, res) => {
     const checksumHash = crypto.createHash("sha256").update(checksumString).digest("hex");
     const checksum = `${checksumHash}###${keyIndex}`;
 
-    // Step 3: Make a request to PhonePe's API
-    const options = {
-      method: "POST",
-      url: MERCHANT_BASE_URL,
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum, // Add checksum in headers
-      },
-      data: { request: payloadBase64 },
-    };
+    // Return deeplinkUrl for the PhonePe app
+    const deeplinkUrl = `phonepe://upi/pay?payload=${payloadBase64}&checksum=${checksum}`;
 
-    const response = await axios.request(options);
-
-    if (response.data.success) {
-      const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
-
-      res.status(201).json({
-        success: true,
-        approvalURL: redirectUrl, // URL to redirect for payment
-        transactionBody, // Include transactionBody in response
-        checksum, // Include checksum in response
-        orderId, // Include orderId for reference
-      });
-    } else {
-      throw new Error(response.data.message || "Failed to initiate payment");
-    }
+    res.status(201).json({
+      success: true,
+      deeplinkUrl,
+      orderId,
+    });
   } catch (error) {
     console.error("Error in createOrder:", error);
     res.status(500).json({
@@ -106,6 +83,7 @@ const createOrder = async (req, res) => {
     });
   }
 };
+
 
 
 /**
@@ -124,7 +102,6 @@ const capturePayment = async (req, res) => {
       });
     }
 
-    // Step 1: Prepare checksum for status check
     const merchantTransactionId = order.paymentId;
     const keyIndex = 1;
     const checksumString =
@@ -132,45 +109,42 @@ const capturePayment = async (req, res) => {
     const checksumHash = crypto.createHash("sha256").update(checksumString).digest("hex");
     const checksum = `${checksumHash}###${keyIndex}`;
 
-    // Step 2: Make a request to check payment status
     const options = {
       method: "GET",
       url: `${MERCHANT_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
-        "X-VERIFY": checksum, // Add checksum in headers
-        "X-MERCHANT-ID": MERCHANT_ID, // Merchant ID header
+        "X-VERIFY": checksum,
+        "X-MERCHANT-ID": MERCHANT_ID,
       },
     };
 
     const response = await axios.request(options);
 
     if (response.data.success) {
-      // Update the order status and stock on successful payment
+      // Update order status and deduct stock
       order.paymentStatus = "paid";
       order.orderStatus = "confirmed";
 
       for (let item of order.cartItems) {
         let product = await Product.findById(item.productId);
-
         if (!product || product.totalStock < item.quantity) {
           return res.status(404).json({
             success: false,
             message: `Not enough stock for product ${item.title}`,
           });
         }
-
-        product.totalStock -= item.quantity; // Deduct stock
+        product.totalStock -= item.quantity;
         await product.save();
       }
 
-      await Cart.findByIdAndDelete(order.cartId); // Clear the cart after successful purchase
+      await Cart.findByIdAndDelete(order.cartId); // Clear cart
       await order.save();
 
-      res.redirect(`${SUCCESS_URL}/?id=${orderId}`); // Redirect to success page
+      res.status(200).json({ success: true });
     } else {
-      res.redirect(`${FAILURE_URL}/?id=${orderId}`); // Redirect to failure page
+      res.status(400).json({ success: false, message: "Payment failed" });
     }
   } catch (error) {
     console.error("Error in capturePayment:", error);
@@ -180,6 +154,7 @@ const capturePayment = async (req, res) => {
     });
   }
 };
+
 
 /**
  * Get all orders by a specific user
