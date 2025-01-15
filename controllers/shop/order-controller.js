@@ -32,6 +32,7 @@ const createOrder = async (req, res) => {
     } = req.body;
 
     // Step 1: Save the order in the database
+    const orderOtp = Math.floor(1000 + Math.random() * 9000);
     const newOrder = new Order({
       userId,
       cartId,
@@ -41,6 +42,7 @@ const createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: "pending",
       totalAmount,
+      orderOtp,
       orderDate,
       orderUpdateDate,
     });
