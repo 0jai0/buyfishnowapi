@@ -24,37 +24,39 @@ const storeToken = async (req, res) => {
 
 // Send notifications
 const sendNotification = async (req, res) => {
-  const { title, body, triggerTime } = req.body;
-
-  if (!title || !body || !triggerTime) {
-    return res.status(400).json({ error: "Title, Body, and Trigger Time are required" });
-  }
-
-  try {
-    const expo = new Expo();
-    const tokens = await Token.find();
-
-    // Prepare messages
-    const messages = tokens.map(({ pushToken }) => ({
-      to: pushToken,
-      sound: "default",
-      title,
-      body,
-      data: { withSome: "data" },
-    }));
-
-    // Send notifications
-    const chunks = expo.chunkPushNotifications(messages);
-    const tickets = [];
-    for (const chunk of chunks) {
-      const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-      tickets.push(...ticketChunk);
+    const { title, body } = req.body;
+  
+    if (!title || !body) {
+      return res.status(400).json({ error: "Title and Body are required" });
     }
-
-    res.status(200).json({ message: "Notifications sent successfully", tickets });
-  } catch (error) {
-    res.status(500).json({ error: "Error sending notifications" });
-  }
-};
+  
+    try {
+      const expo = new Expo();
+      const tokens = await Token.find();
+  
+      // Prepare messages
+      const messages = tokens.map(({ pushToken }) => ({
+        to: pushToken,
+        sound: "default",
+        title,
+        body,
+        data: { withSome: "data" },
+      }));
+  
+      // Send notifications immediately
+      const chunks = expo.chunkPushNotifications(messages);
+      const tickets = [];
+      for (const chunk of chunks) {
+        const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+        tickets.push(...ticketChunk);
+      }
+  
+      res.status(200).json({ message: "Notifications sent successfully", tickets });
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+      res.status(500).json({ error: "Error sending notifications" });
+    }
+  };
+  
 
 module.exports = { storeToken, sendNotification };
