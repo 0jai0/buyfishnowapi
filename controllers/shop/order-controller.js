@@ -23,16 +23,18 @@ const createOrder = async (req, res) => {
       userId,
       cartItems,
       addressInfo,
-      orderStatus,
-      paymentMethod,
+      orderStatus = "confirmed",
+      paymentMethod = "COD",
       totalAmount,
-      orderDate,
-      orderUpdateDate,
+      orderDate = new Date(),
+      orderUpdateDate = new Date(),
       cartId,
     } = req.body;
 
-    // Step 1: Save the order in the database
+    // Generate a random OTP for the order
     const orderOtp = Math.floor(1000 + Math.random() * 9000);
+
+    // Create and save the order
     const newOrder = new Order({
       userId,
       cartId,
@@ -40,7 +42,7 @@ const createOrder = async (req, res) => {
       addressInfo,
       orderStatus,
       paymentMethod,
-      paymentStatus: "pending",
+      paymentStatus: "pending", // Default to pending
       totalAmount,
       orderOtp,
       orderDate,
@@ -49,33 +51,11 @@ const createOrder = async (req, res) => {
 
     await newOrder.save();
 
-    const orderId = newOrder._id.toString();
-    newOrder.paymentId = orderId;
-    await newOrder.save();
-
-    // Step 2: Prepare transaction body for PhonePe
-    const transactionBody = {
-      merchantId: MERCHANT_ID,
-      merchantUserId: userId,
-      amount: totalAmount * 100, // Amount in paise
-      merchantTransactionId: orderId,
-      redirectMode: "SDK", // Use SDK mode
-      paymentInstrument: { type: "PAY_PAGE" },
-    };
-
-    const payloadBase64 = Buffer.from(JSON.stringify(transactionBody)).toString("base64");
-    const keyIndex = 1;
-    const checksumString = payloadBase64 + "/pg/v1/pay" + MERCHANT_KEY;
-    const checksumHash = crypto.createHash("sha256").update(checksumString).digest("hex");
-    const checksum = `${checksumHash}###${keyIndex}`;
-
-    // Return deeplinkUrl for the PhonePe app
-    const deeplinkUrl = `phonepe://upi/pay?payload=${payloadBase64}&checksum=${checksum}`;
-
     res.status(201).json({
       success: true,
-      deeplinkUrl,
-      orderId,
+      message: "Order saved successfully",
+      orderId: newOrder._id,
+      orderOtp,
     });
   } catch (error) {
     console.error("Error in createOrder:", error);
@@ -85,6 +65,7 @@ const createOrder = async (req, res) => {
     });
   }
 };
+
 
 
 
