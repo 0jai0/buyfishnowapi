@@ -7,8 +7,10 @@ const registerUser = async (req, res) => {
   const { userName, email, password } = req.body;
 
   try {
-    const checkUser = await User.findOne({ email });
+    const lowerCaseEmail = email.toLowerCase();
+    const checkUser = await User.findOne({ email: lowerCaseEmail });
     if (checkUser)
+      
       return res.json({
         success: false,
         message: "User Already exists with the same email! Please try again",
@@ -17,7 +19,7 @@ const registerUser = async (req, res) => {
     const hashPassword = await bcrypt.hash(password, 12);
     const newUser = new User({
       userName,
-      email,
+      email: lowerCaseEmail, // Save email in lowercase
       password: hashPassword,
     });
 
@@ -39,7 +41,8 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const checkUser = await User.findOne({ email });
+    const lowerCaseEmail = email.toLowerCase();
+    const checkUser = await User.findOne({ email: lowerCaseEmail });
     if (!checkUser)
       
       return res.json({
@@ -92,7 +95,8 @@ const forgotPassword = async (req, res) => {
 
   try {
     // Check if the email exists in the database
-    const user = await User.findOne({ email });
+    const lowerCaseEmail = email.toLowerCase();
+    const user = await User.findOne({ email: lowerCaseEmail  });
     if (!user) {
       return res.status(404).json({
         success: false,
