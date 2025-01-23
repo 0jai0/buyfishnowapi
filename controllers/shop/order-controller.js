@@ -66,7 +66,34 @@ const createOrder = async (req, res) => {
   }
 };
 
+const addReview = async (req, res) => {
+  try {
+    const { orderId, review } = req.body;
 
+    // Validate the inputs
+    if (!orderId || !review) {
+      return res.status(400).json({ message: "Order ID and review are required." });
+    }
+
+    // Find the order by ID
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    // Update the review field
+    order.review = review;
+    order.orderUpdateDate = new Date(); // Update the order update date
+
+    // Save the updated order
+    await order.save();
+
+    res.status(200).json({ message: "Review added successfully.", order });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "An error occurred while adding the review.", error: error.message });
+  }
+};
 
 
 /**
@@ -202,4 +229,5 @@ module.exports = {
   capturePayment,
   getAllOrdersByUser,
   getOrderDetails,
+  addReview,
 };
