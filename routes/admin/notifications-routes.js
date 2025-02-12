@@ -7,6 +7,6 @@ router.post("/store-token", storeToken);
 
 // Route to send notifications
 router.post("/send", sendNotification);
-router.post("/send-notification", sendNotification);
+router.post("/send-notification", sendNotificationToUser);
 
 module.exports = router;
