@@ -58,5 +58,36 @@ const sendNotification = async (req, res) => {
     }
   };
   
-
-module.exports = { storeToken, sendNotification };
+  const sendNotificationToUser = async (req, res) => {
+    const { userId, title, body } = req.body;
+  
+    if (!userId || !title || !body) {
+      return res.status(400).json({ error: "User ID, Title, and Body are required" });
+    }
+  
+    try {
+      const userToken = await Token.findOne({ userId });
+  
+      if (!userToken) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      const expo = new Expo();
+  
+      const message = {
+        to: userToken.pushToken,
+        sound: "default",
+        title,
+        body,
+        data: { withSome: "data" },
+      };
+  
+      const ticket = await expo.sendPushNotificationsAsync([message]);
+  
+      res.status(200).json({ message: "Notification sent successfully", ticket });
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      res.status(500).json({ error: "Error sending notification" });
+    }
+  };
+module.exports = { storeToken, sendNotification,sendNotificationToUser };
