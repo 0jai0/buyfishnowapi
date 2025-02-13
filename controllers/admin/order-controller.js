@@ -53,7 +53,7 @@ const getOrderDetailsForAdmin = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orderStatus } = req.body;
+    const { paymentStatus } = req.body;
 
     const order = await Order.findById(id);
 
@@ -64,7 +64,7 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    await Order.findByIdAndUpdate(id, { orderStatus });
+    await Order.findByIdAndUpdate(id, { paymentStatus });
 
     res.status(200).json({
       success: true,
