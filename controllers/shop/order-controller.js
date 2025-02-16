@@ -27,6 +27,31 @@ const FAILURE_URL = "http://localhost:5173/payment-failure";
 /**
  * Create a new order and initiate payment through PhonePe
  */
+
+const sendNotification = async (userId, paymentStatus) => {
+  try {
+    console.log(userId);
+    const notificationData = {
+      userId: userId,
+      title: "New Order Placed",
+      body: `New order has been "${paymentStatus}".`,
+    };
+
+    const response = await axios.post(
+      "https://buyfishnowapi-264166008170.us-central1.run.app/api/admin/notifications/send-notification",
+      notificationData
+    );
+
+    if (response.data.success) {
+      console.log("Notification sent successfully.");
+    } else {
+      console.warn("Failed to send notification.");
+    }
+  } catch (error) {
+    console.error("Error sending notification:", error);
+  }
+};
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -77,6 +102,9 @@ const createOrder = async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+
+    await sendNotification("67908590ff95416d976ab420", "Confirmed");
+
     res.status(201).json({
       success: true,
       message: "Order saved successfully",
