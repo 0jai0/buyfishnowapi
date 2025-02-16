@@ -32,7 +32,7 @@ const sendNotification = async (userId, paymentStatus) => {
   try {
     console.log(userId);
     const notificationData = {
-      userId: userId,
+      userId: "67908590ff95416d976ab420",
       title: "New Order Placed",
       body: `New order has been "${paymentStatus}".`,
     };
