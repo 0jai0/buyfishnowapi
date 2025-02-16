@@ -4,8 +4,18 @@ const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const { Buffer } = require("buffer");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
+
 
 // Constants
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 const MERCHANT_KEY = "96434309-7796-489d-8924-ab56988a6076";
 const MERCHANT_ID = "PGTESTPAYUAT86";
 const MERCHANT_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
@@ -50,7 +60,23 @@ const createOrder = async (req, res) => {
     });
 
     await newOrder.save();
+    // Send email after order creation
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "mjvkiran@gmail.com",
+      subject: "New Order Created",
+      text: `A new order has been placed with the following details:
+      
+      Order ID: ${newOrder._id}
+      Total Amount: ${totalAmount}
+      
+      Address Info: ${JSON.stringify(addressInfo, null, 2)}
+      Order Status: ${orderStatus}
+      
+      Thank you!`,
+    };
 
+    await transporter.sendMail(mailOptions);
     res.status(201).json({
       success: true,
       message: "Order saved successfully",
