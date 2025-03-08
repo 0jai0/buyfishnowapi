@@ -32,7 +32,7 @@ const sendNotification = async (userId, paymentStatus) => {
   try {
     console.log(userId);
     const notificationData = {
-      userId: "67908590ff95416d976ab420",
+      userId: userId,
       title: "New Order Placed",
       body: `New order has been "${paymentStatus}".`,
     };
@@ -89,13 +89,14 @@ const createOrder = async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: "mjvkiran@gmail.com",
-      subject: "New Order Created",
+      subject: `New Order Created ${newOrder._id}`,
       text: `A new order has been placed with the following details:
       
-      Order ID: ${newOrder._id}
+      
       Total Amount: ${totalAmount}
       
-      Address Info: ${JSON.stringify(addressInfo, null, 2)}
+      Address Info: ${JSON.stringify({ address: addressInfo.address, phone: addressInfo.phone }, null, 2)}
+
       Order Status: ${orderStatus}
       
       Thank you!`,
