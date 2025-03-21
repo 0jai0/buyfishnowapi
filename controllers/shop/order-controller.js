@@ -34,7 +34,7 @@ const sendNotification = async (userId, paymentStatus) => {
     const notificationData = {
       userId: userId,
       title: "New Order Placed",
-      body: `New order has been "${paymentStatus}".`,
+      body: `Check Admin app "${paymentStatus}".`,
     };
 
     const response = await axios.post(
@@ -104,7 +104,7 @@ const createOrder = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    await sendNotification("67908590ff95416d976ab420", "Confirmed");
+    await sendNotification("6792c630359bc3ef94928542", "Confirmed");
 
     res.status(201).json({
       success: true,
