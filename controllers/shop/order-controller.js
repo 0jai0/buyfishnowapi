@@ -88,7 +88,7 @@ const createOrder = async (req, res) => {
     // Send email after order creation
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: "mjvkiran@gmail.com",
+      to: "nghadei@gmail.com",
       subject: `New Order Created ${newOrder._id}`,
       text: `A new order has been placed with the following details:
       
